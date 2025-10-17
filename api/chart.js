@@ -1,47 +1,49 @@
-export default function handler(req, res) {
-  const now = new Date().toLocaleString("es-CO", { hour12: false });
+export default async function handler(req, res) {
+  try {
+    const response = await fetch(
+      "https://hermes-api-jt8k.onrender.com/api/sensor/data/77c7cd49-b79f-4b62-90c2-9a3c2c2d6b94?limit=20"
+    );
+    const data = await response.json();
 
-  // Simular datos tipo onda
-  const data = Array.from({ length: 40 }, (_, i) => Math.sin(i / 4) * 40 + 60);
+    // Extraer valores numéricos
+    const values = (Array.isArray(data.data) ? data.data : data)
+      .map(d => Number(d.value || d.valor || 0))
+      .filter(v => !isNaN(v));
 
-  // Puntos suavizados
-  const points = data.map((v, i) => `${40 + i * 15},${200 - v}`).join(" L ");
+    if (values.length === 0) throw new Error("Sin datos válidos");
 
-  const svg = `
-  <svg xmlns="http://www.w3.org/2000/svg" width="800" height="400">
-    <defs>
-      <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#0d1117"/>
-        <stop offset="100%" stop-color="#111"/>
-      </linearGradient>
-      <linearGradient id="line" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#4fc3f7"/>
-        <stop offset="100%" stop-color="#2196f3"/>
-      </linearGradient>
-    </defs>
+    // Escalar valores a altura de gráfica
+    const max = Math.max(...values);
+    const min = Math.min(...values);
+    const scale = v => 250 - ((v - min) / (max - min)) * 200;
 
-    <!-- Fondo -->
-    <rect width="100%" height="100%" fill="url(#bg)"/>
+    const points = values.map((v, i) => `${50 + i * 30},${scale(v)}`).join(" L ");
+    const now = new Date().toLocaleString("es-CO", { hour12: false });
 
-    <!-- Cuadrícula -->
-    <g stroke="#222" stroke-width="1">
-      ${Array.from({ length: 10 }, (_, i) => `<line x1="40" y1="${60 + i * 30}" x2="760" y2="${60 + i * 30}"/>`).join("")}
-      ${Array.from({ length: 20 }, (_, i) => `<line x1="${40 + i * 35}" y1="60" x2="${40 + i * 35}" y2="350"/>`).join("")}
-    </g>
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="800" height="400">
+        <defs>
+          <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#0d1117"/>
+            <stop offset="100%" stop-color="#111"/>
+          </linearGradient>
+          <linearGradient id="line" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#4fc3f7"/>
+            <stop offset="100%" stop-color="#2196f3"/>
+          </linearGradient>
+        </defs>
 
-    <!-- Ejes -->
-    <line x1="40" y1="60" x2="40" y2="350" stroke="#888" stroke-width="2"/>
-    <line x1="40" y1="350" x2="760" y2="350" stroke="#888" stroke-width="2"/>
+        <rect width="100%" height="100%" fill="url(#bg)"/>
+        <text x="50" y="40" fill="#4fc3f7" font-size="22" font-weight="bold">📡 Datos del Sensor en Tiempo Real</text>
+        <path d="M ${points}" fill="none" stroke="url(#line)" stroke-width="3" stroke-linecap="round"/>
+        <text x="50" y="380" fill="#aaa" font-size="14">Última actualización: ${now}</text>
+      </svg>`;
 
-    <!-- Línea del gráfico -->
-    <path d="M ${points}" fill="none" stroke="url(#line)" stroke-width="3" stroke-linecap="round"/>
-
-    <!-- Texto -->
-    <text x="50" y="40" fill="#4fc3f7" font-size="22" font-weight="bold">📊 Gráfico del Sensor (Simulado)</text>
-    <text x="50" y="380" fill="#aaa" font-size="14">Actualizado: ${now}</text>
-  </svg>`;
-
-  res.setHeader("Content-Type", "image/svg+xml");
-  res.status(200).send(svg);
+    res.setHeader("Content-Type", "image/svg+xml");
+    res.status(200).send(svg);
+  } catch (err) {
+    console.error("❌ Error al generar gráfico:", err);
+    res.status(500).json({ error: "No se pudo generar el gráfico dinámico" });
+  }
 }
 
