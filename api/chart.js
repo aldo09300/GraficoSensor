@@ -1,63 +1,48 @@
-// /api/chart.js
+import { createCanvas } from "canvas";
+
 export default async function handler(req, res) {
   try {
-    const response = await fetch(
-      "https://hermes-api-jt8k.onrender.com/api/sensor/data/77c7cd49-b79f-4b62-90c2-9a3c2c2d6b94?limit=10"
-    );
-    const data = await response.json();
+    // Crear un canvas de 800x400 píxeles
+    const width = 800;
+    const height = 400;
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext("2d");
 
-    let arr = [];
-    if (Array.isArray(data)) arr = data;
-    else if (Array.isArray(data.data)) arr = data.data;
+    // Fondo oscuro
+    ctx.fillStyle = "#111";
+    ctx.fillRect(0, 0, width, height);
 
-    const points = arr.map((d) => d.value || d.valor || 0);
-    const labels = arr.map((_, i) => i + 1);
+    // Título
+    ctx.fillStyle = "#4fc3f7";
+    ctx.font = "24px Sans-serif";
+    ctx.fillText("📊 Gráfico del Sensor (Simulado)", 30, 40);
 
-    const chartConfig = {
-      type: "line",
-      data: {
-        labels,
-        datasets: [
-          {
-            label: "Fuerza (N)",
-            data: points,
-            borderColor: "rgb(79,195,247)",
-            backgroundColor: "rgba(79,195,247,0.3)",
-            fill: true,
-            borderWidth: 3,
-            tension: 0.4,
-          },
-        ],
-      },
-      options: {
-        plugins: {
-          legend: { labels: { color: "white" } },
-          title: {
-            display: true,
-            text: "📈 Dinamómetro Digital - Fuerza en tiempo real",
-            color: "white",
-          },
-        },
-        scales: {
-          x: { ticks: { color: "white" }, title: { text: "Lecturas", display: true, color: "white" } },
-          y: {
-            ticks: { color: "white" },
-            title: { text: "Fuerza (N)", display: true, color: "white" },
-            min: 0,
-            max: 200
-          },
-        },
-        backgroundColor: "#111",
-      },
-    };
+    // Ejes
+    ctx.strokeStyle = "#444";
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 10; i++) {
+      const y = 60 + i * 30;
+      ctx.beginPath();
+      ctx.moveTo(50, y);
+      ctx.lineTo(750, y);
+      ctx.stroke();
+    }
 
-    const quickchartUrl =
-      "https://quickchart.io/chart?width=1000&height=500&backgroundColor=transparent&c=" +
-      encodeURIComponent(JSON.stringify(chartConfig));
+    // Datos simulados tipo onda
+    ctx.strokeStyle = "#4fc3f7";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let x = 0; x < 700; x++) {
+      const y = 200 + Math.sin(x / 40) * 100;
+      ctx.lineTo(50 + x, y);
+    }
+    ctx.stroke();
 
-    return res.redirect(quickchartUrl);
-  } catch (err) {
-    console.error(err);
+    // Devolver como imagen PNG
+    res.setHeader("Content-Type", "image/png");
+    canvas.pngStream().pipe(res);
+  } catch (e) {
+    console.error(e);
     res.status(500).json({ error: "Error generando gráfico dinámico" });
   }
 }
