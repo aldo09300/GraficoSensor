@@ -10,7 +10,7 @@
   <style>
     body {
       font-family: "Segoe UI", sans-serif;
-      background: #111;
+      background: #0e0e0e;
       color: #eee;
       margin: 0;
       padding: 0;
@@ -20,7 +20,7 @@
       height: 100vh;
     }
     .container {
-      background: #1e1e1e;
+      background: #1a1a1a;
       border-radius: 16px;
       box-shadow: 0 0 25px rgba(0, 0, 0, 0.3);
       padding: 24px;
@@ -101,16 +101,11 @@
       const urlBase = "https://hermes-client.vercel.app/api/sensor/data/77c7cd49-b79f-4b62-90c2-9a3c2c2d6b94";
       let timer = null;
 
-      const canvas = document.getElementById("chart");
-      if (!canvas) {
-        console.error("❌ No se encontró el elemento <canvas id='chart'>.");
-        return;
-      }
-      const ctx = canvas.getContext("2d");
-
+      const ctx = document.getElementById("chart").getContext("2d");
       let gradient;
+
       function makeGradient() {
-        const { width, height } = ctx.canvas;
+        const { height } = ctx.canvas;
         gradient = ctx.createLinearGradient(0, 0, 0, height);
         gradient.addColorStop(0, "rgba(79,195,247,0.4)");
         gradient.addColorStop(1, "rgba(79,195,247,0)");
@@ -127,7 +122,7 @@
             borderColor: "#4fc3f7",
             backgroundColor: () => gradient,
             fill: true,
-            borderWidth: 2.8,
+            borderWidth: 2,
             tension: 0.35,
             pointRadius: 0
           }]
@@ -138,30 +133,31 @@
           parsing: false,
           scales: {
             y: {
+              type: "linear",
               beginAtZero: true,
-              title: { display: true, text: "Valor" },
+              title: { display: true, text: "Valor del sensor" },
               grid: { color: "rgba(255,255,255,0.1)" },
-              ticks: { color: "#ddd" }
+              ticks: { color: "#ccc" }
             },
             x: {
               type: "time",
               adapters: { date: { zone: TZ } },
               time: {
                 tooltipFormat: "yyyy-MM-dd HH:mm",
-                displayFormats: { hour: "HH:mm", day: "dd MMM" }
+                displayFormats: {
+                  minute: "HH:mm",
+                  hour: "HH:mm",
+                  day: "dd MMM"
+                }
               },
               title: { display: true, text: "Fecha y hora" },
               grid: { color: "rgba(255,255,255,0.1)" },
-              ticks: {
-                color: "#ccc",
-                source: "auto",
-                autoSkip: true,
-                maxRotation: 0,
-                minRotation: 0
-              }
+              ticks: { color: "#ccc" }
             }
           },
-          plugins: { legend: { display: false } }
+          plugins: {
+            legend: { display: false }
+          }
         }
       });
 
@@ -171,31 +167,25 @@
           const res = await fetch(`${urlBase}?limit=${limit}`);
           const json = await res.json();
 
-          if (!json || !json.data || !Array.isArray(json.data)) {
-            console.warn("⚠️ Estructura inesperada, no hay datos válidos.");
+          if (!json?.data?.length) {
+            console.warn("⚠️ Sin datos para mostrar.");
             return;
           }
 
           const pts = json.data
-            .map(d => {
-              const y = Number(d.value);
-              const x = new Date(d.createdAt);
-              if (!isNaN(y) && x) return { x, y };
-              return null;
-            })
-            .filter(Boolean)
+            .map(d => ({ x: new Date(d.createdAt), y: Number(d.value) }))
+            .filter(p => !isNaN(p.y))
             .sort((a, b) => a.x - b.x);
 
-          if (pts.length === 0) {
-            console.warn("⚠️ No hay puntos válidos para graficar.");
-            return;
-          }
-
-          // Detectar rango para ajustar escala de tiempo
+          // --- Detectar rango de tiempo para ajustar eje X ---
           const first = pts[0].x.getTime();
           const last = pts[pts.length - 1].x.getTime();
-          const diffHours = (last - first) / (1000 * 60 * 60);
-          if (diffHours < 24) {
+          const diffHours = (last - first) / 36e5;
+
+          if (diffHours < 1) {
+            chart.options.scales.x.time.unit = "minute";
+            chart.options.scales.x.title.text = "Minuto";
+          } else if (diffHours < 24) {
             chart.options.scales.x.time.unit = "hour";
             chart.options.scales.x.title.text = "Hora";
           } else {
@@ -203,24 +193,20 @@
             chart.options.scales.x.title.text = "Fecha";
           }
 
+          // --- Ajuste de escala en Y si hay picos grandes ---
           const ys = pts.map(p => p.y);
           const minY = Math.min(...ys);
           const maxY = Math.max(...ys);
-          const diff = maxY - minY;
-          let scaledPts = pts;
 
-          if (diff > 1000) {
-            console.log("⚙️ Escalando valores...");
-            const scale = 1000;
-            scaledPts = pts.map(p => ({ x: p.x, y: p.y / scale }));
-            chart.options.scales.y.title.text = "Valor (x1000)";
+          if (maxY / minY > 1000) {
+            chart.options.scales.y.type = "logarithmic";
+            chart.options.scales.y.title.text = "Valor (escala log)";
           } else {
-            chart.options.scales.y.title.text = "Valor";
+            chart.options.scales.y.type = "linear";
+            chart.options.scales.y.title.text = "Valor del sensor";
           }
 
-          chart.data.datasets[0].data = scaledPts;
-          chart.options.scales.y.min = Math.min(...scaledPts.map(p => p.y)) * 0.9;
-          chart.options.scales.y.max = Math.max(...scaledPts.map(p => p.y)) * 1.1;
+          chart.data.datasets[0].data = pts;
           chart.update("none");
         } catch (err) {
           console.error("❌ Error al obtener datos:", err);
@@ -244,6 +230,7 @@
 
       realBtn.onclick = startRealtime;
       histBtn.onclick = stopRealtime;
+
       startRealtime();
     };
   </script>
