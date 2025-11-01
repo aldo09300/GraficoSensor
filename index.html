@@ -140,10 +140,15 @@
           x: {
             type: "time",
             adapters: { date: { zone: TZ } },
-            time: { tooltipFormat: "HH:mm:ss", displayFormats: { minute: "HH:mm", hour: "HH:mm" } },
-            title: { display: true, text: "Hora" },
+            time: {
+              tooltipFormat: "yyyy-MM-dd HH:mm:ss",
+              displayFormats: { minute: "HH:mm", hour: "HH:mm", day: "MMM dd" },
+            },
+            title: { display: true, text: "Fecha y hora" },
             grid: { color: "rgba(255,255,255,0.1)" },
-            ticks: { color: "#ccc" }
+            ticks: { color: "#ccc" },
+            min: undefined,
+            max: undefined
           },
           y: {
             beginAtZero: true,
@@ -157,64 +162,62 @@
     });
 
     async function fetchData() {
-  try {
-    const limit = limitSelect.value.split(" ")[0];
-    const res = await fetch(`${urlBase}?limit=${limit}`);
-    const json = await res.json();
+      try {
+        const limit = limitSelect.value.split(" ")[0];
+        const res = await fetch(`${urlBase}?limit=${limit}`);
+        const json = await res.json();
 
-    console.log("🔹 Respuesta cruda:", json);
+        console.log("🔹 Respuesta cruda:", json);
 
-    if (!json || !json.data || !Array.isArray(json.data)) {
-      console.warn("⚠️ Estructura inesperada, no hay datos válidos.");
-      return;
+        if (!json || !json.data || !Array.isArray(json.data)) {
+          console.warn("⚠️ Estructura inesperada, no hay datos válidos.");
+          return;
+        }
+
+        const pts = json.data
+          .map(d => {
+            const y = Number(d.value);
+            const x = new Date(d.createdAt);
+            if (!isNaN(y) && x) return { x, y };
+            return null;
+          })
+          .filter(Boolean)
+          .sort((a, b) => a.x - b.x);
+
+        console.log("📊 Puntos procesados:", pts);
+
+        if (pts.length === 0) {
+          console.warn("⚠️ No se encontraron puntos válidos para graficar.");
+          return;
+        }
+
+        const ys = pts.map(p => p.y);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+        const diff = maxY - minY;
+        let scaledPts = pts;
+
+        if (diff > 1000) {
+          console.log("⚙️ Escalando valores para mejor visualización...");
+          const scale = 1000;
+          scaledPts = pts.map(p => ({ x: p.x, y: p.y / scale }));
+          chart.options.scales.y.title.text = "Valor (x1000)";
+        } else {
+          chart.options.scales.y.title.text = "Valor";
+        }
+
+        chart.data.datasets[0].data = scaledPts;
+
+        chart.options.scales.y.min = Math.min(...scaledPts.map(p => p.y)) * 0.9;
+        chart.options.scales.y.max = Math.max(...scaledPts.map(p => p.y)) * 1.1;
+        chart.options.scales.x.min = scaledPts[0].x;
+        chart.options.scales.x.max = scaledPts[scaledPts.length - 1].x;
+
+        chart.update("none");
+      } catch (err) {
+        console.error("❌ Error al obtener o procesar datos:", err);
+      }
     }
-
-    // Procesar puntos
-    const pts = json.data
-      .map(d => {
-        const y = Number(d.value);
-        const x = new Date(d.createdAt);
-        if (!isNaN(y) && x) return { x, y };
-        return null;
-      })
-      .filter(Boolean)
-      .sort((a, b) => a.x - b.x);
-
-    console.log("📊 Puntos procesados:", pts);
-
-    if (pts.length === 0) {
-      console.warn("⚠️ No se encontraron puntos válidos para graficar.");
-      return;
-    }
-
-    // Detectar rango de valores
-    const ys = pts.map(p => p.y);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
-
-    // Normalizar si hay mucha diferencia entre valores
-    const diff = maxY - minY;
-    let scaledPts = pts;
-    if (diff > 1000) {
-      console.log("⚙️ Escalando valores para mejor visualización...");
-      const scale = 1000; // dividir por 1000 si son muy grandes
-      scaledPts = pts.map(p => ({ x: p.x, y: p.y / scale }));
-      chart.options.scales.y.title.text = "Valor (x1000)";
-    } else {
-      chart.options.scales.y.title.text = "Valor";
-    }
-
-    // Actualizar datos y ejes
-    chart.data.datasets[0].data = scaledPts;
-    chart.options.scales.y.min = Math.min(...scaledPts.map(p => p.y)) * 0.9;
-    chart.options.scales.y.max = Math.max(...scaledPts.map(p => p.y)) * 1.1;
-
-    chart.update("none");
-  } catch (err) {
-    console.error("❌ Error al obtener o procesar datos:", err);
-  }
-}
-
 
     function startRealtime() {
       clearInterval(timer);
@@ -239,4 +242,5 @@
   </script>
 </body>
 </html>
+
 
