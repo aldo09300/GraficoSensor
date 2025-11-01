@@ -1,251 +1,251 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Gráfico del Sensor</title>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-  <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0/build/global/luxon.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.0"></script>
   <style>
     body {
-      margin: 0;
+      font-family: "Segoe UI", sans-serif;
       background: #111;
       color: #eee;
-      font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial;
+      margin: 0;
+      padding: 0;
       display: flex;
       justify-content: center;
-      align-items: flex-start;
-      padding: 40px 10px;
+      align-items: center;
+      height: 100vh;
     }
-    .card {
-      width: 95%;
-      max-width: 1100px;
-      background: #181818;
+    .container {
+      background: #1e1e1e;
       border-radius: 16px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, .5);
+      box-shadow: 0 0 25px rgba(0, 0, 0, 0.3);
       padding: 24px;
+      width: 90%;
+      max-width: 1100px;
+      height: 80%;
+      display: flex;
+      flex-direction: column;
     }
-    h1 {
-      margin: 0 0 6px;
-      font-size: 1.4rem;
+    h2 {
       color: #4fc3f7;
-    }
-    p {
-      color: #aaa;
-      margin-top: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1.5rem;
+      margin-bottom: 6px;
     }
     .controls {
       display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
+      gap: 12px;
       align-items: center;
-      margin-bottom: 14px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
     }
-    select, button {
+    button {
+      padding: 6px 14px;
       border: none;
       border-radius: 8px;
-      padding: 8px 12px;
-      font-size: 14px;
+      cursor: pointer;
+      font-weight: bold;
+      color: #fff;
+      transition: 0.2s;
+    }
+    #realtime {
+      background: #2196f3;
+    }
+    #history {
+      background: #333;
     }
     select {
       background: #222;
       color: #fff;
-    }
-    button {
-      background: #1976d2;
-      color: #fff;
-      cursor: pointer;
-      font-weight: 600;
-      transition: background .2s;
-    }
-    button:hover {
-      background: #2196f3;
-    }
-    button.secondary {
-      background: #333;
+      border: 1px solid #555;
+      padding: 5px 8px;
+      border-radius: 6px;
     }
     canvas {
-      width: 100% !important;
-      height: 420px !important;
-      margin-top: 10px;
+      flex: 1;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>📊 Gráfico del Sensor</h1>
+  <div class="container">
+    <h2>📊 Gráfico del Sensor</h2>
     <p>Visualiza los datos del sensor en tiempo real o por historial.</p>
 
     <div class="controls">
       <label>Mostrar últimos:</label>
       <select id="limit">
-        <option>10 datos</option>
-        <option selected>50 datos</option>
+        <option>50 datos</option>
         <option>100 datos</option>
+        <option>200 datos</option>
       </select>
-      <button id="realtime">⏱ Tiempo Real</button>
-      <button id="history" class="secondary">Historial</button>
+
+      <button id="realtime">🕒 Tiempo Real</button>
+      <button id="history">Historial</button>
     </div>
 
     <canvas id="chart"></canvas>
   </div>
 
   <script>
-window.onload = function () {
-  const TZ = "America/Bogota";
-  const limitSelect = document.getElementById("limit");
-  const realBtn = document.getElementById("realtime");
-  const histBtn = document.getElementById("history");
-  const urlBase = "https://hermes-client.vercel.app/api/sensor/data/77c7cd49-b79f-4b62-90c2-9a3c2c2d6b94";
-  let timer = null;
+    window.onload = function () {
+      const TZ = "America/Bogota";
+      const limitSelect = document.getElementById("limit");
+      const realBtn = document.getElementById("realtime");
+      const histBtn = document.getElementById("history");
+      const urlBase = "https://hermes-client.vercel.app/api/sensor/data/77c7cd49-b79f-4b62-90c2-9a3c2c2d6b94";
+      let timer = null;
 
-  const canvas = document.getElementById("chart");
-  if (!canvas) {
-    console.error("❌ No se encontró el elemento <canvas id='chart'> en el HTML.");
-    return;
-  }
-  const ctx = canvas.getContext("2d");
+      const canvas = document.getElementById("chart");
+      if (!canvas) {
+        console.error("❌ No se encontró el elemento <canvas id='chart'>.");
+        return;
+      }
+      const ctx = canvas.getContext("2d");
 
-  let gradient;
-  function makeGradient() {
-    const { width, height } = ctx.canvas;
-    gradient = ctx.createLinearGradient(0, 0, 0, height);
-    gradient.addColorStop(0, "rgba(79,195,247,0.4)");
-    gradient.addColorStop(1, "rgba(79,195,247,0)");
-  }
-  makeGradient();
-  window.addEventListener("resize", makeGradient);
+      let gradient;
+      function makeGradient() {
+        const { width, height } = ctx.canvas;
+        gradient = ctx.createLinearGradient(0, 0, 0, height);
+        gradient.addColorStop(0, "rgba(79,195,247,0.4)");
+        gradient.addColorStop(1, "rgba(79,195,247,0)");
+      }
+      makeGradient();
+      window.addEventListener("resize", makeGradient);
 
-  const chart = new Chart(ctx, {
-    type: "line",
-    data: {
-      datasets: [{
-        label: "Valor del sensor",
-        data: [],
-        borderColor: "#4fc3f7",
-        backgroundColor: () => gradient,
-        fill: true,
-        borderWidth: 2.8,
-        tension: 0.35,
-        pointRadius: 0
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      parsing: false,
-      scales: {
-        y: {
-          beginAtZero: true,
-          title: { display: true, text: "Valor" },
-          grid: { color: "rgba(255,255,255,0.1)" },
-          ticks: { color: "#ddd" }
+      const chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          datasets: [{
+            label: "Valor del sensor",
+            data: [],
+            borderColor: "#4fc3f7",
+            backgroundColor: () => gradient,
+            fill: true,
+            borderWidth: 2.8,
+            tension: 0.35,
+            pointRadius: 0
+          }]
         },
-        x: {
-          type: "time",
-          adapters: { date: { zone: TZ } },
-          time: {
-            unit: "day", // 👈 escala en días
-            tooltipFormat: "yyyy-MM-dd HH:mm",
-            displayFormats: { day: "dd MMM" }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          parsing: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: "Valor" },
+              grid: { color: "rgba(255,255,255,0.1)" },
+              ticks: { color: "#ddd" }
+            },
+            x: {
+              type: "time",
+              adapters: { date: { zone: TZ } },
+              time: {
+                tooltipFormat: "yyyy-MM-dd HH:mm",
+                displayFormats: { hour: "HH:mm", day: "dd MMM" }
+              },
+              title: { display: true, text: "Fecha y hora" },
+              grid: { color: "rgba(255,255,255,0.1)" },
+              ticks: {
+                color: "#ccc",
+                source: "auto",
+                autoSkip: true,
+                maxRotation: 0,
+                minRotation: 0
+              }
+            }
           },
-          title: { display: true, text: "Fecha" },
-          grid: { color: "rgba(255,255,255,0.1)" },
-          ticks: {
-            color: "#ccc",
-            source: "auto",
-            autoSkip: true,
-            maxRotation: 0,
-            minRotation: 0
-          }
+          plugins: { legend: { display: false } }
         }
-      },
-      plugins: { legend: { display: false } }
-    }
-  });
+      });
 
-  // 👇 Aquí empieza correctamente la función async
-  async function fetchData() {
-    try {
-      const limit = limitSelect.value.split(" ")[0];
-      const res = await fetch(`${urlBase}?limit=${limit}`);
-      const json = await res.json();
+      async function fetchData() {
+        try {
+          const limit = limitSelect.value.split(" ")[0];
+          const res = await fetch(`${urlBase}?limit=${limit}`);
+          const json = await res.json();
 
-      console.log("🔹 Respuesta cruda:", json);
+          if (!json || !json.data || !Array.isArray(json.data)) {
+            console.warn("⚠️ Estructura inesperada, no hay datos válidos.");
+            return;
+          }
 
-      if (!json || !json.data || !Array.isArray(json.data)) {
-        console.warn("⚠️ Estructura inesperada, no hay datos válidos.");
-        return;
+          const pts = json.data
+            .map(d => {
+              const y = Number(d.value);
+              const x = new Date(d.createdAt);
+              if (!isNaN(y) && x) return { x, y };
+              return null;
+            })
+            .filter(Boolean)
+            .sort((a, b) => a.x - b.x);
+
+          if (pts.length === 0) {
+            console.warn("⚠️ No hay puntos válidos para graficar.");
+            return;
+          }
+
+          // Detectar rango para ajustar escala de tiempo
+          const first = pts[0].x.getTime();
+          const last = pts[pts.length - 1].x.getTime();
+          const diffHours = (last - first) / (1000 * 60 * 60);
+          if (diffHours < 24) {
+            chart.options.scales.x.time.unit = "hour";
+            chart.options.scales.x.title.text = "Hora";
+          } else {
+            chart.options.scales.x.time.unit = "day";
+            chart.options.scales.x.title.text = "Fecha";
+          }
+
+          const ys = pts.map(p => p.y);
+          const minY = Math.min(...ys);
+          const maxY = Math.max(...ys);
+          const diff = maxY - minY;
+          let scaledPts = pts;
+
+          if (diff > 1000) {
+            console.log("⚙️ Escalando valores...");
+            const scale = 1000;
+            scaledPts = pts.map(p => ({ x: p.x, y: p.y / scale }));
+            chart.options.scales.y.title.text = "Valor (x1000)";
+          } else {
+            chart.options.scales.y.title.text = "Valor";
+          }
+
+          chart.data.datasets[0].data = scaledPts;
+          chart.options.scales.y.min = Math.min(...scaledPts.map(p => p.y)) * 0.9;
+          chart.options.scales.y.max = Math.max(...scaledPts.map(p => p.y)) * 1.1;
+          chart.update("none");
+        } catch (err) {
+          console.error("❌ Error al obtener datos:", err);
+        }
       }
 
-      const pts = json.data
-        .map(d => {
-          const y = Number(d.value);
-          const x = new Date(d.createdAt);
-          if (!isNaN(y) && x) return { x, y };
-          return null;
-        })
-        .filter(Boolean)
-        .sort((a, b) => a.x - b.x);
-
-      console.log("📊 Puntos procesados:", pts);
-
-      if (pts.length === 0) {
-        console.warn("⚠️ No se encontraron puntos válidos para graficar.");
-        return;
+      function startRealtime() {
+        clearInterval(timer);
+        realBtn.style.background = "#2196f3";
+        histBtn.style.background = "#333";
+        fetchData();
+        timer = setInterval(fetchData, 5000);
       }
 
-      const ys = pts.map(p => p.y);
-      const minY = Math.min(...ys);
-      const maxY = Math.max(...ys);
-      const diff = maxY - minY;
-      let scaledPts = pts;
-
-      if (diff > 1000) {
-        console.log("⚙️ Escalando valores para mejor visualización...");
-        const scale = 1000;
-        scaledPts = pts.map(p => ({ x: p.x, y: p.y / scale }));
-        chart.options.scales.y.title.text = "Valor (x1000)";
-      } else {
-        chart.options.scales.y.title.text = "Valor";
+      function stopRealtime() {
+        clearInterval(timer);
+        histBtn.style.background = "#2196f3";
+        realBtn.style.background = "#333";
+        fetchData();
       }
 
-      chart.data.datasets[0].data = scaledPts;
-
-      chart.options.scales.y.min = Math.min(...scaledPts.map(p => p.y)) * 0.9;
-      chart.options.scales.y.max = Math.max(...scaledPts.map(p => p.y)) * 1.1;
-
-      chart.update("none");
-    } catch (err) {
-      console.error("❌ Error al obtener o procesar datos:", err);
-    }
-  }
-
-  function startRealtime() {
-    clearInterval(timer);
-    realBtn.style.background = "#2196f3";
-    histBtn.style.background = "#333";
-    fetchData();
-    timer = setInterval(fetchData, 5000);
-  }
-
-  function stopRealtime() {
-    clearInterval(timer);
-    histBtn.style.background = "#2196f3";
-    realBtn.style.background = "#333";
-    fetchData();
-  }
-
-  realBtn.onclick = startRealtime;
-  histBtn.onclick = stopRealtime;
-
-  startRealtime();
-};
-</script>
-
+      realBtn.onclick = startRealtime;
+      histBtn.onclick = stopRealtime;
+      startRealtime();
+    };
+  </script>
 </body>
 </html>
-
-
