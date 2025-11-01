@@ -137,19 +137,27 @@
         maintainAspectRatio: false,
         parsing: false,
         scales: {
-          x: {
-            type: "time",
-            adapters: { date: { zone: TZ } },
-            time: {
-              tooltipFormat: "yyyy-MM-dd HH:mm:ss",
-              displayFormats: { minute: "HH:mm", hour: "HH:mm", day: "MMM dd" },
-            },
-            title: { display: true, text: "Fecha y hora" },
-            grid: { color: "rgba(255,255,255,0.1)" },
-            ticks: { color: "#ccc" },
-            min: undefined,
-            max: undefined
-          },
+        }x: {
+  type: "time",
+  adapters: { date: { zone: TZ } },
+  time: {
+    unit: "day", // 👈 cambia la escala a días
+    tooltipFormat: "yyyy-MM-dd HH:mm",
+    displayFormats: { day: "dd MMM" } // 👈 mostrará fechas tipo “21 Oct”
+  },
+  title: { display: true, text: "Fecha" },
+  grid: { color: "rgba(255,255,255,0.1)" },
+  ticks: {
+    color: "#ccc",
+    source: "auto",
+    autoSkip: true,
+    maxRotation: 0,
+    minRotation: 0
+  },
+  min: undefined,
+  max: undefined
+},
+
           y: {
             beginAtZero: true,
             title: { display: true, text: "Valor" },
