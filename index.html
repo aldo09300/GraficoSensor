@@ -250,6 +250,11 @@
       fetchData();
     };
 
+    // Actualizar al cambiar el selector de límite
+    document.getElementById("limit").addEventListener("change", () => {
+      fetchData();
+    });
+
     // Inicialización
     fetchData();
     intervalo = setInterval(fetchData, 5000);
