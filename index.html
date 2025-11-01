@@ -101,6 +101,7 @@
       const ctx = document.getElementById("chart").getContext("2d");
       let gradient;
 
+      // Crear un degradado azul como relleno
       function makeGradient() {
         const { height } = ctx.canvas;
         gradient = ctx.createLinearGradient(0, 0, 0, height);
@@ -110,6 +111,7 @@
       makeGradient();
       window.addEventListener("resize", makeGradient);
 
+      // Crear el gráfico
       const chart = new Chart(ctx, {
         type: "line",
         data: {
@@ -131,20 +133,25 @@
           scales: {
             y: {
               beginAtZero: true,
-              title: { display: true, text: "Valor" },
+              title: { display: true, text: "Valor del sensor" },
               grid: { color: "rgba(255,255,255,0.1)" },
               ticks: { color: "#ccc" }
             },
             x: {
-              title: { display: true, text: "Fecha de registro" },
+              title: { display: true, text: "Muestras recientes" },
               grid: { color: "rgba(255,255,255,0.1)" },
-              ticks: { color: "#ccc", maxRotation: 45, minRotation: 0 }
+              ticks: {
+                color: "#ccc",
+                autoSkip: true,
+                maxTicksLimit: 10
+              }
             }
           },
           plugins: { legend: { display: false } }
         }
       });
 
+      // Función para obtener los datos desde la API
       async function fetchData() {
         try {
           const limit = limitSelect.value.split(" ")[0];
@@ -157,15 +164,21 @@
           }
 
           const values = json.data
-            .map(d => ({
-              label: new Date(d.createdAt).toLocaleDateString("es-CO", {
-                day: "2-digit",
-                month: "short"
-              }),
+            .map((d, i) => ({
+              label: i + 1, // número de muestra
               value: Number(d.value)
             }))
             .filter(v => !isNaN(v.value))
-            .reverse(); // mostrar del más antiguo al más reciente
+            .reverse(); // ordenar del más antiguo al más nuevo
+
+          // Ajustar límites de Y para que no se salga
+          const vals = values.map(v => v.value);
+          const min = Math.min(...vals);
+          const max = Math.max(...vals);
+          const margen = (max - min) * 0.1; // margen 10%
+
+          chart.options.scales.y.min = Math.max(0, min - margen);
+          chart.options.scales.y.max = max + margen;
 
           chart.data.labels = values.map(v => v.label);
           chart.data.datasets[0].data = values.map(v => v.value);
@@ -175,6 +188,7 @@
         }
       }
 
+      // Modo tiempo real
       function startRealtime() {
         clearInterval(timer);
         realBtn.style.background = "#2196f3";
@@ -183,6 +197,7 @@
         timer = setInterval(fetchData, 5000);
       }
 
+      // Modo historial
       function stopRealtime() {
         clearInterval(timer);
         histBtn.style.background = "#2196f3";
@@ -198,3 +213,4 @@
   </script>
 </body>
 </html>
+
