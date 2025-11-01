@@ -59,6 +59,7 @@
   <div class="card">
     <h1>📊 Gráfico del Sensor</h1>
     <p>Visualiza los datos del sensor en tiempo real o por historial.</p>
+
     <div class="controls">
       <label>Mostrar últimos:</label>
       <select id="limit">
@@ -69,6 +70,7 @@
       <button id="realtime">⏱ Tiempo Real</button>
       <button id="history" class="secondary">Historial</button>
     </div>
+
     <canvas id="chart"></canvas>
   </div>
 
@@ -129,7 +131,10 @@
           x:{
             type:"time",
             adapters:{date:{zone:TZ}},
-            time:{tooltipFormat:"HH:mm:ss",displayFormats:{minute:"HH:mm",hour:"HH:mm"}},
+            time:{
+              tooltipFormat:"HH:mm:ss",
+              displayFormats:{minute:"HH:mm",hour:"HH:mm"},
+            },
             title:{display:true,text:"Fecha y hora"},
             grid:{color:"rgba(255,255,255,0.07)"},
             ticks:{color:"#ccc"}
@@ -144,39 +149,28 @@
       }
     });
 
-    const parseDate = v=>{
-      if(!v)return null;
-      if(typeof v==="number")return new Date(v>1e12?v:v*1000);
-      if(typeof v==="string"){const d=Date.parse(v);return isNaN(d)?null:new Date(d);}
-      return null;
-    };
-    const coerceNum=v=>typeof v==="number"?v:Number(String(v).replace(",",".")); 
-    const firstKey=(obj,regex)=>Object.keys(obj).find(k=>regex.test(k));
-
     async function fetchData() {
-  try {
-    const limit = limitSelect.value.split(" ")[0];
-    const res = await fetch(`${urlBase}?limit=${limit}`);
-    const json = await res.json();
+      try {
+        const limit = limitSelect.value.split(" ")[0];
+        const res = await fetch(`${urlBase}?limit=${limit}`);
+        const json = await res.json();
 
-    if (!json.success || !Array.isArray(json.data)) {
-      console.warn("Respuesta inesperada:", json);
-      return;
+        if (!json.success || !Array.isArray(json.data)) {
+          console.warn("Respuesta inesperada:", json);
+          return;
+        }
+
+        const pts = json.data.map(o => ({
+          x: new Date(o.createdAt),
+          y: Number(o.value)
+        }));
+
+        chart.data.datasets[0].data = pts;
+        chart.update("none");
+      } catch (e) {
+        console.error("Error al obtener datos:", e);
+      }
     }
-
-    // Convierte los datos a puntos (x: tiempo, y: valor)
-    const pts = json.data.map(o => ({
-      x: new Date(o.createdAt),
-      y: Number(o.value)
-    }));
-
-    chart.data.datasets[0].data = pts;
-    chart.update("none");
-  } catch (e) {
-    console.error("Error al obtener datos:", e);
-  }
-}
-
 
     function startRealtime(){
       clearInterval(timer);
