@@ -132,42 +132,41 @@
           pointRadius: 0
         }]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        parsing: false,
-        scales: {
-        }x: {
-  type: "time",
-  adapters: { date: { zone: TZ } },
-  time: {
-    unit: "day", // 👈 cambia la escala a días
-    tooltipFormat: "yyyy-MM-dd HH:mm",
-    displayFormats: { day: "dd MMM" } // 👈 mostrará fechas tipo “21 Oct”
+    options: {
+  responsive: true,
+  maintainAspectRatio: false,
+  parsing: false,
+  scales: {
+    y: {
+      beginAtZero: true,
+      title: { display: true, text: "Valor" },
+      grid: { color: "rgba(255,255,255,0.1)" },
+      ticks: { color: "#ddd" }
+    }, // 👈 agrega esta coma
+    x: {
+      type: "time",
+      adapters: { date: { zone: TZ } },
+      time: {
+        unit: "day",
+        tooltipFormat: "yyyy-MM-dd HH:mm",
+        displayFormats: { day: "dd MMM" }
+      },
+      title: { display: true, text: "Fecha" },
+      grid: { color: "rgba(255,255,255,0.1)" },
+      ticks: {
+        color: "#ccc",
+        source: "auto",
+        autoSkip: true,
+        maxRotation: 0,
+        minRotation: 0
+      },
+      min: undefined,
+      max: undefined
+    }
   },
-  title: { display: true, text: "Fecha" },
-  grid: { color: "rgba(255,255,255,0.1)" },
-  ticks: {
-    color: "#ccc",
-    source: "auto",
-    autoSkip: true,
-    maxRotation: 0,
-    minRotation: 0
-  },
-  min: undefined,
-  max: undefined
-},
+  plugins: { legend: { display: false } }
+}
 
-          y: {
-            beginAtZero: true,
-            title: { display: true, text: "Valor" },
-            grid: { color: "rgba(255,255,255,0.1)" },
-            ticks: { color: "#ddd" }
-          }
-        },
-        plugins: { legend: { display: false } }
-      }
-    });
 
     async function fetchData() {
       try {
