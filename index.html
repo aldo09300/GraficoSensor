@@ -93,160 +93,158 @@
   </div>
 
   <script>
-  window.onload = function () {
-    const TZ = "America/Bogota";
-    const limitSelect = document.getElementById("limit");
-    const realBtn = document.getElementById("realtime");
-    const histBtn = document.getElementById("history");
-    const urlBase = "https://hermes-client.vercel.app/api/sensor/data/77c7cd49-b79f-4b62-90c2-9a3c2c2d6b94";
-    let timer = null;
+window.onload = function () {
+  const TZ = "America/Bogota";
+  const limitSelect = document.getElementById("limit");
+  const realBtn = document.getElementById("realtime");
+  const histBtn = document.getElementById("history");
+  const urlBase = "https://hermes-client.vercel.app/api/sensor/data/77c7cd49-b79f-4b62-90c2-9a3c2c2d6b94";
+  let timer = null;
 
-    const canvas = document.getElementById("chart");
-    if (!canvas) {
-      console.error("❌ No se encontró el elemento <canvas id='chart'> en el HTML.");
-      return;
-    }
-    const ctx = canvas.getContext("2d");
+  const canvas = document.getElementById("chart");
+  if (!canvas) {
+    console.error("❌ No se encontró el elemento <canvas id='chart'> en el HTML.");
+    return;
+  }
+  const ctx = canvas.getContext("2d");
 
-    let gradient;
-    function makeGradient() {
-      const { width, height } = ctx.canvas;
-      gradient = ctx.createLinearGradient(0, 0, 0, height);
-      gradient.addColorStop(0, "rgba(79,195,247,0.4)");
-      gradient.addColorStop(1, "rgba(79,195,247,0)");
-    }
-    makeGradient();
-    window.addEventListener("resize", makeGradient);
+  let gradient;
+  function makeGradient() {
+    const { width, height } = ctx.canvas;
+    gradient = ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, "rgba(79,195,247,0.4)");
+    gradient.addColorStop(1, "rgba(79,195,247,0)");
+  }
+  makeGradient();
+  window.addEventListener("resize", makeGradient);
 
-    const chart = new Chart(ctx, {
-      type: "line",
-      data: {
-        datasets: [{
-          label: "Valor del sensor",
-          data: [],
-          borderColor: "#4fc3f7",
-          backgroundColor: () => gradient,
-          fill: true,
-          borderWidth: 2.8,
-          tension: 0.35,
-          pointRadius: 0
-        }]
-      },
+  const chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      datasets: [{
+        label: "Valor del sensor",
+        data: [],
+        borderColor: "#4fc3f7",
+        backgroundColor: () => gradient,
+        fill: true,
+        borderWidth: 2.8,
+        tension: 0.35,
+        pointRadius: 0
+      }]
+    },
     options: {
-  responsive: true,
-  maintainAspectRatio: false,
-  parsing: false,
-  scales: {
-    y: {
-      beginAtZero: true,
-      title: { display: true, text: "Valor" },
-      grid: { color: "rgba(255,255,255,0.1)" },
-      ticks: { color: "#ddd" }
-    }, // 👈 agrega esta coma
-    x: {
-      type: "time",
-      adapters: { date: { zone: TZ } },
-      time: {
-        unit: "day",
-        tooltipFormat: "yyyy-MM-dd HH:mm",
-        displayFormats: { day: "dd MMM" }
+      responsive: true,
+      maintainAspectRatio: false,
+      parsing: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: "Valor" },
+          grid: { color: "rgba(255,255,255,0.1)" },
+          ticks: { color: "#ddd" }
+        },
+        x: {
+          type: "time",
+          adapters: { date: { zone: TZ } },
+          time: {
+            unit: "day", // 👈 escala en días
+            tooltipFormat: "yyyy-MM-dd HH:mm",
+            displayFormats: { day: "dd MMM" }
+          },
+          title: { display: true, text: "Fecha" },
+          grid: { color: "rgba(255,255,255,0.1)" },
+          ticks: {
+            color: "#ccc",
+            source: "auto",
+            autoSkip: true,
+            maxRotation: 0,
+            minRotation: 0
+          }
+        }
       },
-      title: { display: true, text: "Fecha" },
-      grid: { color: "rgba(255,255,255,0.1)" },
-      ticks: {
-        color: "#ccc",
-        source: "auto",
-        autoSkip: true,
-        maxRotation: 0,
-        minRotation: 0
-      },
-      min: undefined,
-      max: undefined
+      plugins: { legend: { display: false } }
     }
-  },
-  plugins: { legend: { display: false } }
-}
+  });
 
+  // 👇 Aquí empieza correctamente la función async
+  async function fetchData() {
+    try {
+      const limit = limitSelect.value.split(" ")[0];
+      const res = await fetch(`${urlBase}?limit=${limit}`);
+      const json = await res.json();
 
-    async function fetchData() {
-      try {
-        const limit = limitSelect.value.split(" ")[0];
-        const res = await fetch(`${urlBase}?limit=${limit}`);
-        const json = await res.json();
+      console.log("🔹 Respuesta cruda:", json);
 
-        console.log("🔹 Respuesta cruda:", json);
-
-        if (!json || !json.data || !Array.isArray(json.data)) {
-          console.warn("⚠️ Estructura inesperada, no hay datos válidos.");
-          return;
-        }
-
-        const pts = json.data
-          .map(d => {
-            const y = Number(d.value);
-            const x = new Date(d.createdAt);
-            if (!isNaN(y) && x) return { x, y };
-            return null;
-          })
-          .filter(Boolean)
-          .sort((a, b) => a.x - b.x);
-
-        console.log("📊 Puntos procesados:", pts);
-
-        if (pts.length === 0) {
-          console.warn("⚠️ No se encontraron puntos válidos para graficar.");
-          return;
-        }
-
-        const ys = pts.map(p => p.y);
-        const minY = Math.min(...ys);
-        const maxY = Math.max(...ys);
-        const diff = maxY - minY;
-        let scaledPts = pts;
-
-        if (diff > 1000) {
-          console.log("⚙️ Escalando valores para mejor visualización...");
-          const scale = 1000;
-          scaledPts = pts.map(p => ({ x: p.x, y: p.y / scale }));
-          chart.options.scales.y.title.text = "Valor (x1000)";
-        } else {
-          chart.options.scales.y.title.text = "Valor";
-        }
-
-        chart.data.datasets[0].data = scaledPts;
-
-        chart.options.scales.y.min = Math.min(...scaledPts.map(p => p.y)) * 0.9;
-        chart.options.scales.y.max = Math.max(...scaledPts.map(p => p.y)) * 1.1;
-        chart.options.scales.x.min = scaledPts[0].x;
-        chart.options.scales.x.max = scaledPts[scaledPts.length - 1].x;
-
-        chart.update("none");
-      } catch (err) {
-        console.error("❌ Error al obtener o procesar datos:", err);
+      if (!json || !json.data || !Array.isArray(json.data)) {
+        console.warn("⚠️ Estructura inesperada, no hay datos válidos.");
+        return;
       }
+
+      const pts = json.data
+        .map(d => {
+          const y = Number(d.value);
+          const x = new Date(d.createdAt);
+          if (!isNaN(y) && x) return { x, y };
+          return null;
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.x - b.x);
+
+      console.log("📊 Puntos procesados:", pts);
+
+      if (pts.length === 0) {
+        console.warn("⚠️ No se encontraron puntos válidos para graficar.");
+        return;
+      }
+
+      const ys = pts.map(p => p.y);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+      const diff = maxY - minY;
+      let scaledPts = pts;
+
+      if (diff > 1000) {
+        console.log("⚙️ Escalando valores para mejor visualización...");
+        const scale = 1000;
+        scaledPts = pts.map(p => ({ x: p.x, y: p.y / scale }));
+        chart.options.scales.y.title.text = "Valor (x1000)";
+      } else {
+        chart.options.scales.y.title.text = "Valor";
+      }
+
+      chart.data.datasets[0].data = scaledPts;
+
+      chart.options.scales.y.min = Math.min(...scaledPts.map(p => p.y)) * 0.9;
+      chart.options.scales.y.max = Math.max(...scaledPts.map(p => p.y)) * 1.1;
+
+      chart.update("none");
+    } catch (err) {
+      console.error("❌ Error al obtener o procesar datos:", err);
     }
+  }
 
-    function startRealtime() {
-      clearInterval(timer);
-      realBtn.style.background = "#2196f3";
-      histBtn.style.background = "#333";
-      fetchData();
-      timer = setInterval(fetchData, 5000);
-    }
+  function startRealtime() {
+    clearInterval(timer);
+    realBtn.style.background = "#2196f3";
+    histBtn.style.background = "#333";
+    fetchData();
+    timer = setInterval(fetchData, 5000);
+  }
 
-    function stopRealtime() {
-      clearInterval(timer);
-      histBtn.style.background = "#2196f3";
-      realBtn.style.background = "#333";
-      fetchData();
-    }
+  function stopRealtime() {
+    clearInterval(timer);
+    histBtn.style.background = "#2196f3";
+    realBtn.style.background = "#333";
+    fetchData();
+  }
 
-    realBtn.onclick = startRealtime;
-    histBtn.onclick = stopRealtime;
+  realBtn.onclick = startRealtime;
+  histBtn.onclick = stopRealtime;
 
-    startRealtime();
-  };
-  </script>
+  startRealtime();
+};
+</script>
+
 </body>
 </html>
 
