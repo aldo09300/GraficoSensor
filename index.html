@@ -1,115 +1,218 @@
-<script>
-  const TZ = "America/Bogota";
-  const limitSelect = document.getElementById("limit");
-  const realBtn = document.getElementById("realtime");
-  const histBtn = document.getElementById("history");
-  const urlBase = "https://hermes-client.vercel.app/api/sensor/data/77c7cd49-b79f-4b62-90c2-9a3c2c2d6b94";
-  let timer = null;
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Gráfico del Sensor</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1"></script>
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      color: #eee;
+      font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 40px 10px;
+    }
+    .card {
+      width: 95%;
+      max-width: 1100px;
+      background: #181818;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, .5);
+      padding: 24px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 1.4rem;
+      color: #4fc3f7;
+    }
+    p {
+      color: #aaa;
+      margin-top: 0;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    select, button {
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 14px;
+    }
+    select {
+      background: #222;
+      color: #fff;
+    }
+    button {
+      background: #1976d2;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background .2s;
+    }
+    button:hover {
+      background: #2196f3;
+    }
+    button.secondary {
+      background: #333;
+    }
+    canvas {
+      width: 100% !important;
+      height: 420px !important;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>📊 Gráfico del Sensor</h1>
+    <p>Visualiza los datos del sensor en tiempo real o por historial.</p>
 
-  const ctx = document.getElementById("chart").getContext("2d");
+    <div class="controls">
+      <label>Mostrar últimos:</label>
+      <select id="limit">
+        <option>10 datos</option>
+        <option selected>50 datos</option>
+        <option>100 datos</option>
+      </select>
+      <button id="realtime">⏱ Tiempo Real</button>
+      <button id="history" class="secondary">Historial</button>
+    </div>
 
-  let gradient;
-  function makeGradient() {
-    const { width, height } = ctx.canvas;
-    gradient = ctx.createLinearGradient(0, 0, 0, height);
-    gradient.addColorStop(0, "rgba(79,195,247,0.4)");
-    gradient.addColorStop(1, "rgba(79,195,247,0)");
-  }
-  makeGradient();
-  window.addEventListener("resize", makeGradient);
+    <canvas id="chart"></canvas>
+  </div>
 
-  const chart = new Chart(ctx, {
-    type: "line",
-    data: {
-      datasets: [{
-        label: "Valor del sensor",
-        data: [],
-        borderColor: "#4fc3f7",
-        backgroundColor: () => gradient,
-        fill: true,
-        borderWidth: 2.8,
-        tension: 0.35,
-        pointRadius: 0
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      parsing: false,
-      scales: {
-        x: {
-          type: "time",
-          adapters: { date: { zone: TZ } },
-          time: { tooltipFormat: "HH:mm:ss", displayFormats: { minute: "HH:mm", hour: "HH:mm" } },
-          title: { display: true, text: "Hora" },
-          grid: { color: "rgba(255,255,255,0.1)" },
-          ticks: { color: "#ccc" }
-        },
-        y: {
-          beginAtZero: true,
-          title: { display: true, text: "Valor" },
-          grid: { color: "rgba(255,255,255,0.1)" },
-          ticks: { color: "#ddd" }
-        }
+  <script>
+  window.onload = function () {
+    const TZ = "America/Bogota";
+    const limitSelect = document.getElementById("limit");
+    const realBtn = document.getElementById("realtime");
+    const histBtn = document.getElementById("history");
+    const urlBase = "https://hermes-client.vercel.app/api/sensor/data/77c7cd49-b79f-4b62-90c2-9a3c2c2d6b94";
+    let timer = null;
+
+    const canvas = document.getElementById("chart");
+    if (!canvas) {
+      console.error("❌ No se encontró el elemento <canvas id='chart'> en el HTML.");
+      return;
+    }
+    const ctx = canvas.getContext("2d");
+
+    let gradient;
+    function makeGradient() {
+      const { width, height } = ctx.canvas;
+      gradient = ctx.createLinearGradient(0, 0, 0, height);
+      gradient.addColorStop(0, "rgba(79,195,247,0.4)");
+      gradient.addColorStop(1, "rgba(79,195,247,0)");
+    }
+    makeGradient();
+    window.addEventListener("resize", makeGradient);
+
+    const chart = new Chart(ctx, {
+      type: "line",
+      data: {
+        datasets: [{
+          label: "Valor del sensor",
+          data: [],
+          borderColor: "#4fc3f7",
+          backgroundColor: () => gradient,
+          fill: true,
+          borderWidth: 2.8,
+          tension: 0.35,
+          pointRadius: 0
+        }]
       },
-      plugins: { legend: { display: false } }
-    }
-  });
-
-  async function fetchData() {
-    try {
-      const limit = limitSelect.value.split(" ")[0];
-      const res = await fetch(`${urlBase}?limit=${limit}`);
-      const json = await res.json();
-
-      console.log("🔹 Respuesta cruda:", json);
-
-      // Validar estructura de datos
-      if (!json || !json.data || !Array.isArray(json.data)) {
-        console.warn("⚠️ Estructura inesperada, no hay datos válidos.");
-        return;
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        parsing: false,
+        scales: {
+          x: {
+            type: "time",
+            adapters: { date: { zone: TZ } },
+            time: { tooltipFormat: "HH:mm:ss", displayFormats: { minute: "HH:mm", hour: "HH:mm" } },
+            title: { display: true, text: "Hora" },
+            grid: { color: "rgba(255,255,255,0.1)" },
+            ticks: { color: "#ccc" }
+          },
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: "Valor" },
+            grid: { color: "rgba(255,255,255,0.1)" },
+            ticks: { color: "#ddd" }
+          }
+        },
+        plugins: { legend: { display: false } }
       }
+    });
 
-      const pts = json.data
-        .map(d => {
-          const y = Number(d.value);
-          const x = new Date(d.createdAt);
-          if (!isNaN(y) && x) return { x, y };
-          return null;
-        })
-        .filter(Boolean)
-        .sort((a, b) => a.x - b.x);
+    async function fetchData() {
+      try {
+        const limit = limitSelect.value.split(" ")[0];
+        const res = await fetch(`${urlBase}?limit=${limit}`);
+        const json = await res.json();
 
-      console.log("📊 Puntos procesados:", pts);
+        console.log("🔹 Respuesta cruda:", json);
 
-      chart.data.datasets[0].data = pts;
-      chart.update("none");
+        if (!json || !json.data || !Array.isArray(json.data)) {
+          console.warn("⚠️ Estructura inesperada, no hay datos válidos.");
+          return;
+        }
 
-      if (pts.length === 0) {
-        console.warn("⚠️ No se encontraron puntos válidos para graficar.");
+        const pts = json.data
+          .map(d => {
+            const y = Number(d.value);
+            const x = new Date(d.createdAt);
+            if (!isNaN(y) && x) return { x, y };
+            return null;
+          })
+          .filter(Boolean)
+          .sort((a, b) => a.x - b.x);
+
+        console.log("📊 Puntos procesados:", pts);
+
+        chart.data.datasets[0].data = pts;
+        chart.update("none");
+
+        if (pts.length === 0) {
+          console.warn("⚠️ No se encontraron puntos válidos para graficar.");
+        }
+      } catch (err) {
+        console.error("❌ Error al obtener o procesar datos:", err);
       }
-    } catch (err) {
-      console.error("❌ Error al obtener o procesar datos:", err);
     }
-  }
 
-  function startRealtime() {
-    clearInterval(timer);
-    realBtn.style.background = "#2196f3";
-    histBtn.style.background = "#333";
-    fetchData();
-    timer = setInterval(fetchData, 5000);
-  }
+    function startRealtime() {
+      clearInterval(timer);
+      realBtn.style.background = "#2196f3";
+      histBtn.style.background = "#333";
+      fetchData();
+      timer = setInterval(fetchData, 5000);
+    }
 
-  function stopRealtime() {
-    clearInterval(timer);
-    histBtn.style.background = "#2196f3";
-    realBtn.style.background = "#333";
-    fetchData();
-  }
+    function stopRealtime() {
+      clearInterval(timer);
+      histBtn.style.background = "#2196f3";
+      realBtn.style.background = "#333";
+      fetchData();
+    }
 
-  realBtn.onclick = startRealtime;
-  histBtn.onclick = stopRealtime;
+    realBtn.onclick = startRealtime;
+    histBtn.onclick = stopRealtime;
 
-  startRealtime();
-</script>
+    startRealtime();
+  };
+  </script>
+</body>
+</html>
+
