@@ -210,8 +210,7 @@
             }),
             valor: Number(d.value),
           }))
-          .filter(d => !isNaN(d.valor))
-          .reverse(); // del más antiguo al más nuevo
+          .filter(d => !isNaN(d.valor));
 
         // Asignar datos al gráfico
         chart.data.labels = datos.map(d => d.fecha);
