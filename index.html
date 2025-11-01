@@ -150,27 +150,28 @@
     });
 
     async function fetchData() {
-      try {
-        const limit = limitSelect.value.split(" ")[0];
-        const res = await fetch(`${urlBase}?limit=${limit}`);
-        const json = await res.json();
+  try {
+    const limit = limitSelect.value.split(" ")[0];
+    const res = await fetch(`${urlBase}?limit=${limit}`);
+    const json = await res.json();
 
-        if (!json.success || !Array.isArray(json.data)) {
-          console.warn("Respuesta inesperada:", json);
-          return;
-        }
+    // ✅ Esta parte se ajusta a la estructura correcta de tu API
+    const arr = json.data || [];
 
-        const pts = json.data.map(o => ({
-          x: new Date(o.createdAt),
-          y: Number(o.value)
-        }));
+    const pts = arr.map(o => ({
+      x: new Date(o.createdAt),
+      y: Number(o.value)
+    })).sort((a, b) => a.x - b.x);
 
-        chart.data.datasets[0].data = pts;
-        chart.update("none");
-      } catch (e) {
-        console.error("Error al obtener datos:", e);
-      }
-    }
+    chart.data.datasets[0].data = pts;
+    chart.update("none");
+
+    console.log("Datos cargados:", pts.length, "puntos");
+  } catch (e) {
+    console.error("Error al obtener datos:", e);
+  }
+}
+
 
     function startRealtime(){
       clearInterval(timer);
